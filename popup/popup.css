@@ -169,6 +169,37 @@ h2 {
   line-height: 1.35;
 }
 
+/* PII Type Toggle List */
+.pii-type-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.pii-type-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: hsl(223, 40%, 13%);
+  border: 1px solid transparent;
+  transition: border var(--transition-fast), background var(--transition-fast);
+}
+
+.pii-type-row:hover {
+  border-color: var(--border-hover);
+  background: hsl(223, 40%, 14%);
+}
+
+.pii-type-row .option-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
 /* Custom Dropdown Select */
 .select-wrapper {
   display: flex;

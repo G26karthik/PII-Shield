@@ -11,6 +11,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const maskSelect = document.getElementById('mask-type');
   const blockedCountEl = document.getElementById('blocked-count');
   const resetBtn = document.getElementById('reset-stats-btn');
+  const piiTypeSwitches = Array.from(document.querySelectorAll('[data-pii-type]'));
+
+  const DEFAULT_PII_TYPES = {
+    phone: true,
+    email: true,
+    aadhaar: true,
+    creditCard: true,
+    pan: true,
+    passport: true,
+    bankAccount: true
+  };
 
   // Load saved state
   const state = await chrome.storage.local.get({
@@ -18,7 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     domMasking: true,
     networkMasking: true,
     maskType: 'asterisks',
-    blockedCount: 0
+    blockedCount: 0,
+    piiTypes: DEFAULT_PII_TYPES
   });
 
   // Initialize UI values
@@ -27,6 +39,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   networkSwitch.checked = state.networkMasking;
   maskSelect.value = state.maskType;
   blockedCountEl.textContent = state.blockedCount;
+  piiTypeSwitches.forEach((el) => {
+    el.checked = state.piiTypes[el.dataset.piiType] !== false;
+  });
 
   // If master switch is disabled, gray out sub-options
   updateOptionsState(state.enabled);
@@ -50,6 +65,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.storage.local.set({ maskType: e.target.value });
   });
 
+  piiTypeSwitches.forEach((el) => {
+    el.addEventListener('change', (e) => {
+      state.piiTypes[el.dataset.piiType] = e.target.checked;
+      chrome.storage.local.set({ piiTypes: state.piiTypes });
+    });
+  });
+
   resetBtn.addEventListener('click', () => {
     chrome.storage.local.set({ blockedCount: 0 });
     blockedCountEl.textContent = '0';
@@ -64,11 +86,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Helper to toggle sub-controls disabled visual state
   function updateOptionsState(enabled) {
-    const options = [domSwitch, networkSwitch, maskSelect];
+    const options = [domSwitch, networkSwitch, maskSelect, ...piiTypeSwitches];
     options.forEach(opt => {
       opt.disabled = !enabled;
       // Fade wrapper styles
-      const parentRow = opt.closest('.option-row') || opt.closest('.select-wrapper');
+      const parentRow = opt.closest('.option-row') || opt.closest('.select-wrapper') || opt.closest('.pii-type-row');
       if (parentRow) {
         if (enabled) {
           parentRow.style.opacity = '1';

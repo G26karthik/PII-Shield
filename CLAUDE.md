@@ -1,33 +1,165 @@
-# CLAUDE.md
+# PII-Shield — CLAUDE.md (Agent Context & Loop Instructions)
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Goal
+Extend the existing **PII-Shield** Chrome extension (Manifest V3) to detect and redact four types of Personally Identifiable Information (PII) from AI chat prompts on ChatGPT, Claude, and Gemini — before the data ever leaves the browser.
 
-## What this is
+The four PII types to support:
+1. **Phone Numbers** (already implemented — keep and improve)
+2. **PAN Numbers** (Indian Permanent Account Number)
+3. **Aadhaar Numbers** (Indian 12-digit UID)
+4. **Email Addresses**
 
-A Manifest V3 Chrome/Edge/Brave extension ("AI Prompt Phone Masker" / PII Shield) that redacts PII — phone numbers, email addresses, Aadhaar numbers, credit card numbers, PAN card numbers, passport numbers, and bank account/IFSC codes — before it reaches AI chat sites (ChatGPT, Claude.ai, Gemini). It has no build step, no bundler, and no package.json — it is loaded directly as unpacked source.
+---
 
-## Commands
+## Repository Layout (Current State)
+```
+PII-Shield/
++-- CLAUDE.md                  <- this file (agent context)
++-- manifest.json              <- Manifest V3 config
++-- README.md
++-- test-regex.js              <- Node.js run-check script (NO frameworks)
++-- background/
+¦   +-- background.js          <- Badge coordinator, storage init
++-- content/
+¦   +-- content.js             <- Isolated world: DOM events, paste, badge UI
+¦   +-- inject.js              <- Main world: fetch/XHR network proxy
++-- popup/
+    +-- popup.html
+    +-- popup.css
+    +-- popup.js
+```
 
-- Run the regex/masking self-test: `node test-regex.js`
-- Load the extension for manual testing: open `chrome://extensions/`, enable Developer mode, "Load unpacked", select the repo root.
-- There is no lint, build, or package.json — don't invent npm scripts. `test-regex.js` is a standalone Node script with a hand-rolled assertion suite (no test framework); add new cases directly to the `testCases` array in that file.
+---
 
-## Architecture
+## Agentic Loop Instructions
 
-The extension works via two cooperating content-script contexts injected on `*://*.chatgpt.com/*`, `*://*.claude.ai/*`, and `*://*.gemini.google.com/*` (declared in `manifest.json`):
+### LOOP ENTRY — READ THIS FIRST
+Before writing a single line of code, execute this sequence every iteration:
 
-- **`content/content.js`** — runs in the Isolated World (has DOM + `chrome.storage` access). Handles DOM-level masking: intercepts `paste` events (redacts before insert), debounces `input` events (300-400ms) to show a floating "Redact" badge near the active field, and safely rewrites text via `document.execCommand('insertText', ...)` so framework-controlled inputs (React, etc.) don't desync.
-- **`content/inject.js`** — runs in the MAIN world (`world: "MAIN"`, `run_at: "document_start"` in manifest.json), so it executes in the page's own JS context. It monkey-patches `window.fetch` and `XMLHttpRequest.prototype.send` to scrub phone numbers from outgoing string request bodies before they leave the browser — this is the "network proxy" mode and is independent of what the DOM shows the user.
-- **Config bridging between worlds**: `content.js` cannot directly share JS state with `inject.js` (different worlds), so it serializes settings into a DOM attribute — `document.documentElement.setAttribute('data-phone-masker-config', JSON.stringify(...))` — which `inject.js` reads on each intercepted call via `getConfig()`. Any new setting that `inject.js` needs must be added to this attribute payload in `content.js`'s `updateDOMConfig()`.
-- **Stats flow back the other way**: `inject.js` can't call `chrome.runtime` APIs directly (MAIN world), so it dispatches a `CustomEvent('phone-masker-stat', { detail: { count } })` on `document`, which `content.js` listens for and forwards via `chrome.runtime.sendMessage({ type: 'pii_masked', count })` to the background worker.
-- **`background/background.js`** — service worker. Owns `chrome.storage.local` defaults (`enabled`, `domMasking`, `networkMasking`, `maskType`, `blockedCount`, `piiTypes`), increments `blockedCount` on `pii_masked` messages, and mirrors it onto the toolbar badge via `chrome.storage.onChanged`.
-- **`popup/popup.js` + `popup.html` + `popup.css`** — settings UI. Reads/writes the same `chrome.storage.local` keys directly; all three scripts (`content.js`, `background.js`, `popup.js`) stay in sync purely through `chrome.storage.onChanged` listeners, there is no message-passing config protocol.
-- **`content/pii-detectors.js`** is the single source of truth for detection/masking logic: a UMD-style plain script exporting `DETECTORS`, `DEFAULT_PII_TYPES`, `luhnCheck`, `detectAll`, `getMaskReplacement`, and `maskText`. It's listed first in the `js` array of *both* `content_scripts` entries in `manifest.json` (isolated world for `content.js`, MAIN world for `inject.js`) so each world gets its own instance of the exact same code, and `test-regex.js` `require()`s it directly in Node — so there is only one place to change detection behavior. `background.js` is the one exception: it inlines a copy of just the `DEFAULT_PII_TYPES` object (not the detection logic) since a service worker can't easily consume the browser-global UMD export; keep it in sync if you add/remove a PII type.
-- **PII types** (each independently toggleable via `piiTypes.<id>` in storage, all default `true`): `phone` (legacy regex, unchanged behavior/labels), `email`, `aadhaar` (12-digit, UIDAI numbers never start with 0/1), `creditCard` (13-19 digit grouped candidates, kept only if they pass `luhnCheck`), `pan`, `passport` (Indian format: 1 letter + 7 digits), `bankAccount` (two detectors sharing this id — a standalone IFSC pattern, and a context-gated account-number pattern that only fires after a keyword like "account"/"a/c" since bare digit runs are otherwise indistinguishable from phone/Aadhaar/card numbers).
-- **Overlap resolution**: `detectAll` runs every enabled detector over the full text, then sorts all candidate matches by `(start asc, length desc)` and greedily keeps non-overlapping ones — so at a given position the longer/more specific match wins, and independent PII in the same string (e.g. an email and a phone number) are both kept. `maskText` does one left-to-right rebuild pass over those resolved matches.
-- Mask replacement has three modes keyed by `maskType`: `asterisks` (`***` for every type, default), `placeholder` (`"[<type label>]"`, e.g. `[email]`), `redacted` (`"[REDACTED <TYPE LABEL>]"`, e.g. `[REDACTED AADHAAR NUMBER]`) — except `phone`, which keeps its original exact strings (`[phone number]` / `[REDACTED]`) for backward compatibility.
+1. Read `test-regex.js` — understand the current test suite and all passing cases.
+2. Read `content/content.js` — understand the PII_DETECTORS structure and event handlers.
+3. Read `content/inject.js` — understand the network proxy interceptor.
+4. Read `popup/popup.html` and `popup/popup.js` — understand the settings UI.
+5. Run `node test-regex.js` — confirm baseline still passes before any change.
 
-## Design constraints worth preserving
+Only after all five steps, begin planning your changes.
 
-- Network interception must fail safe: if masking throws inside the patched `fetch`/`XHR.send`, the original unmasked request must still go through rather than breaking the host page (see the try/catch wrapping in `inject.js`).
-- DOM text replacement must go through `document.execCommand('insertText', ...)`, not direct `.value`/`.innerText` assignment, to avoid breaking React-controlled inputs on these chat sites.
+---
+
+### LOOP BODY — IMPLEMENTATION PLAN (execute in order)
+
+#### STEP 1 — Create `content/pii-patterns.js`
+Create a new file: `content/pii-patterns.js`
+
+This file exports a single `PII_DETECTORS` array. Each detector is an object:
+
+  {
+    id: 'pan',
+    label: 'PAN Number',
+    severity: 'block',        // 'redact' | 'block'
+    regex: /PATTERN/g,
+    replacement: '[PAN REDACTED]'   // only used if severity === 'redact'
+  }
+
+Severity rules:
+- 'redact'  -> automatically replace the PII with the replacement string. Show a brief non-blocking toast.
+- 'block'   -> do NOT send the message. Show a prominent blocking modal. User must confirm.
+
+The four detectors:
+
+  id       | label          | severity | regex
+  ---------|----------------|----------|-------------------------------------------------
+  phone    | Phone Number   | redact   | (existing verified pattern from test-regex.js)
+  email    | Email Address  | redact   | /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g
+  pan      | PAN Number     | block    | /\b[A-Z]{5}[0-9]{4}[A-Z]\b/g
+  aadhaar  | Aadhaar Number | block    | /\b[2-9]\d{3}\s?\d{4}\s?\d{4}\b/g
+
+Agent Research Note: PAN format is 5 alpha + 4 numeric + 1 alpha (10 chars total) per Income Tax Dept spec.
+Aadhaar is a 12-digit number where the first digit is 2-9, often displayed in groups of 4 with spaces.
+
+---
+
+#### STEP 2 — Refactor `content/content.js`
+- Inline PII_DETECTORS at the top (comment: // SOURCE: pii-patterns.js — keep in sync).
+- Replace PHONE_REGEXES with a loop over PII_DETECTORS:
+
+    for (const detector of PII_DETECTORS) {
+      detector.regex.lastIndex = 0;
+      if (detector.regex.test(text)) {
+        if (detector.severity === 'block') {
+          showBlockModal(detector);
+          return;
+        } else {
+          text = text.replace(detector.regex, detector.replacement);
+          maskedCount++;
+        }
+      }
+    }
+
+- Implement showBlockModal(detector): full-screen overlay, title "Sensitive Data Detected",
+  explains what was found, two buttons: "Edit Message" and "Send Anyway".
+- Update showBadge() to show the detector label (e.g. "Email Detected").
+
+---
+
+#### STEP 3 — Refactor `content/inject.js`
+- Inline the same PII_DETECTORS array (same sync comment).
+- Loop over detectors in the fetch/XHR interceptor, only redact severity='redact' types.
+- 'block' severity is handled in the DOM layer only.
+
+---
+
+#### STEP 4 — Update `popup/popup.html` and `popup/popup.js`
+- Add a "PII Types" section: one toggle row per detector showing label + severity badge.
+- Save per-detector state to chrome.storage.local: { phone: true, email: true, pan: true, aadhaar: true }
+- content.js and inject.js skip any detector where enabled === false.
+
+---
+
+#### STEP 5 — Update `background/background.js`
+- Expand stats: { phone: 0, email: 0, pan: 0, aadhaar: 0, blocked: 0 }
+- Handle new message type 'pii_blocked' in addition to 'phone_masked'.
+- Badge shows total of all blocked + redacted counts.
+
+---
+
+#### STEP 6 — Update `test-regex.js`
+Add test cases for ALL four detectors. Each needs:
+- At least 2 positive matches (real valid formats)
+- At least 1 negative (something that must NOT match)
+
+Run: node test-regex.js
+ALL tests must pass before proceeding. If any fail: fix, then re-run. Never skip.
+
+---
+
+#### STEP 7 — Update `README.md`
+- Document all 4 PII types with redact vs block behavior.
+- Show the pii-patterns.js detector structure so developers can add new types.
+- Add a "Running Tests" section.
+
+---
+
+### LOOP EXIT CRITERIA — Definition of Done
+The loop is complete only when ALL of the following are true:
+
+[ ] node test-regex.js exits with code 0 and prints all tests passed
+[ ] All 4 PII types detected in paste handler
+[ ] redact types (phone, email) auto-replaced inline
+[ ] block types (PAN, Aadhaar) show blocking modal before send
+[ ] Per-detector toggles work in popup
+[ ] Network proxy (inject.js) redacts phone + email in outgoing API payloads
+[ ] No .env, .mdc files committed
+[ ] Final commit: "feat: extend PII detection to PAN, Aadhaar, email, phone" and git push
+
+---
+
+## Constraints
+
+- No new npm dependencies. Vanilla JS only.
+- No TypeScript. Plain .js files only.
+- Self-healing loop: if a step errors, fix root cause and retry. Never skip failing tests.
+- Fail safe: if PII detection throws, log it and pass through original text.
+- Keep the existing purple/dark theme for all new UI.
+- Never commit .mdc files or .env files.
+- Run test-regex.js after every regex change, not just at the end.

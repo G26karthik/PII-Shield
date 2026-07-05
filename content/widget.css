@@ -330,6 +330,57 @@
   display: block;
 }
 
+/* Success message */
+.pii-shield-success {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: hsla(142, 70%, 40%, 0.15);
+  border: 1px solid hsla(142, 70%, 40%, 0.3);
+  color: hsl(142, 70%, 70%);
+  font-size: 12px;
+  display: none;
+  margin-top: 8px;
+}
+
+.pii-shield-success.pii-shield-success--visible {
+  display: block;
+}
+
+/* Premium Custom Checkbox */
+.pii-shield-rule-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid hsl(223, 30%, 30%);
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(223, 40%, 11%);
+  margin-right: 10px;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pii-shield-rule-checkbox:hover {
+  border-color: hsl(263, 90%, 63%);
+}
+
+.pii-shield-rule-checkbox:checked {
+  background: hsl(263, 90%, 63%);
+  border-color: hsl(263, 90%, 63%);
+}
+
+.pii-shield-rule-checkbox:checked::before {
+  content: '✓';
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
 /* Rules list section */
 .pii-shield-panel__rules {
   padding: 0 18px 14px;

@@ -116,6 +116,7 @@
       </div>
 
       <div class="pii-shield-panel__input-area">
+        <!-- Rule prompt input -->
         <div class="pii-shield-input-wrapper">
           <input type="text" class="pii-shield-input" id="pii-shield-prompt-input"
                  placeholder="e.g. block strings with 3 numbers + 2 letters"
@@ -130,7 +131,19 @@
           </button>
         </div>
 
+        <!-- Rule import input -->
+        <div class="pii-shield-input-wrapper" style="margin-top: 8px;">
+          <input type="text" class="pii-shield-input" id="pii-shield-import-input"
+                 placeholder="Paste shared rules link here..."
+                 autocomplete="off" spellcheck="false" style="font-size: 11px; padding: 8px 10px;" />
+          <button class="pii-shield-submit-btn" id="pii-shield-import-btn"
+                  aria-label="Import rules" style="width: 40px; height: 36px; font-size: 11px;">
+            OK
+          </button>
+        </div>
+
         <div class="pii-shield-error" id="pii-shield-error"></div>
+        <div class="pii-shield-success" id="pii-shield-success"></div>
 
         <div class="pii-shield-preview" id="pii-shield-preview">
           <div class="pii-shield-preview__label">Rule Name (Editable)</div>
@@ -148,7 +161,13 @@
       </div>
 
       <div class="pii-shield-panel__rules">
-        <div class="pii-shield-rules-title">Active Custom Rules</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div class="pii-shield-rules-title" style="margin-bottom: 0;">Active Custom Rules</div>
+          <button class="pii-shield-preview__btn pii-shield-preview__btn--confirm" id="pii-shield-export-btn"
+                  style="padding: 4px 8px; font-size: 10px; display: none; background: hsl(263, 90%, 63%); border-radius: 6px;">
+            Export Selected
+          </button>
+        </div>
         <div id="pii-shield-rules-list">
           <div class="pii-shield-rules-empty" id="pii-shield-rules-empty">
             No custom rules yet
@@ -171,6 +190,7 @@
 
     if (customRules.length === 0) {
       if (emptyEl) emptyEl.style.display = 'block';
+      updateExportButtonVisibility();
       return;
     }
     if (emptyEl) emptyEl.style.display = 'none';
@@ -179,19 +199,35 @@
       const item = document.createElement('div');
       item.className = 'pii-shield-rule-item';
       item.innerHTML = `
-        <div class="pii-shield-rule-item__info">
+        <input type="checkbox" class="pii-shield-rule-checkbox" data-rule-id="${esc(rule.id)}" aria-label="Select rule for export" />
+        <div class="pii-shield-rule-item__info" style="margin-left: 4px;">
           <div class="pii-shield-rule-item__label">${esc(rule.label)}</div>
           <div class="pii-shield-rule-item__regex">/${esc(rule.regexSource)}/${esc(rule.regexFlags)}</div>
         </div>
         <button class="pii-shield-rule-item__delete" title="Delete rule">🗑</button>
       `;
+      
+      // Delete handler
       item.querySelector('.pii-shield-rule-item__delete').addEventListener('click', async (e) => {
         e.stopPropagation();
         setItemDeleting(item, true);
         await deleteRule(rule.id);
       });
+
+      // Checkbox handler
+      item.querySelector('.pii-shield-rule-checkbox').addEventListener('change', updateExportButtonVisibility);
+
       listEl.appendChild(item);
     });
+
+    updateExportButtonVisibility();
+  }
+
+  function updateExportButtonVisibility() {
+    const exportBtn = document.getElementById('pii-shield-export-btn');
+    if (!exportBtn) return;
+    const checkedBoxes = document.querySelectorAll('.pii-shield-rule-checkbox:checked');
+    exportBtn.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
   }
 
   function setItemDeleting(el, state) {
@@ -224,6 +260,15 @@
     el.classList.add('pii-shield-error--visible');
     clearTimeout(el._timer);
     el._timer = setTimeout(() => el.classList.remove('pii-shield-error--visible'), 7000);
+  }
+
+  function showSuccess(msg) {
+    const el = document.getElementById('pii-shield-success');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('pii-shield-success--visible');
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove('pii-shield-success--visible'), 7000);
   }
 
   function setLoading(state) {
@@ -278,6 +323,96 @@
     if (input) input.value = '';
   }
 
+  async function handleExport() {
+    const checkedBoxes = Array.from(document.querySelectorAll('.pii-shield-rule-checkbox:checked'));
+    const selectedIds = checkedBoxes.map(cb => cb.dataset.ruleId);
+    if (selectedIds.length === 0) return;
+
+    const rulesToExport = customRules.filter(r => selectedIds.includes(r.id)).map(r => ({
+      label: r.label,
+      regexSource: r.regexSource,
+      regexFlags: r.regexFlags
+    }));
+
+    try {
+      const jsonStr = JSON.stringify(rulesToExport);
+      // Unicode-safe Base64 encoding
+      const b64 = btoa(unescape(encodeURIComponent(jsonStr)));
+      const exportUrl = `https://piishield.com/import#rules=${b64}`;
+
+      await navigator.clipboard.writeText(exportUrl);
+      showSuccess(`Copied export link for ${rulesToExport.length} rule(s) to clipboard!`);
+
+      // Uncheck all boxes
+      checkedBoxes.forEach(cb => cb.checked = false);
+      updateExportButtonVisibility();
+    } catch (e) {
+      showError('Failed to copy export link.');
+    }
+  }
+
+  async function handleImport() {
+    const importInput = document.getElementById('pii-shield-import-input');
+    const urlVal = (importInput ? importInput.value : '').trim();
+    if (!urlVal) return;
+
+    try {
+      let b64 = '';
+      if (urlVal.includes('#rules=')) {
+        b64 = urlVal.split('#rules=')[1];
+      } else if (urlVal.includes('rules=')) {
+        const match = urlVal.match(/rules=([^&]+)/);
+        b64 = match ? match[1] : urlVal;
+      } else {
+        b64 = urlVal;
+      }
+
+      // Unicode-safe Base64 decoding
+      const decodedJson = decodeURIComponent(escape(atob(b64)));
+      const importedRules = JSON.parse(decodedJson);
+
+      if (!Array.isArray(importedRules)) {
+        throw new Error('Invalid format');
+      }
+
+      // Validate structure & regex compilation
+      for (const rule of importedRules) {
+        if (!rule.label || !rule.regexSource || !rule.regexFlags) {
+          throw new Error('Malformed rule structure');
+        }
+        new RegExp(rule.regexSource, rule.regexFlags);
+      }
+
+      const data = await chrome.storage.local.get({ customRules: [] });
+      const existingRules = data.customRules || [];
+
+      let importedCount = 0;
+      for (const rule of importedRules) {
+        const exists = existingRules.some(r => r.regexSource === rule.regexSource && r.regexFlags === rule.regexFlags);
+        if (!exists) {
+          rule.id = 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+          existingRules.push(rule);
+          importedCount++;
+        }
+      }
+
+      if (importedCount > 0) {
+        await chrome.storage.local.set({ customRules: existingRules });
+        customRules = existingRules;
+        if (typeof PIIDetectors !== 'undefined') {
+          PIIDetectors.loadCustomDetectors(customRules);
+        }
+        renderRulesList();
+        if (importInput) importInput.value = '';
+        showSuccess(`Successfully imported ${importedCount} rule(s)!`);
+      } else {
+        showError('All imported rules already exist.');
+      }
+    } catch (e) {
+      showError('Failed to import rules. Invalid link or corrupted data.');
+    }
+  }
+
   function togglePanel(fab, panel) {
     isPanelOpen = !isPanelOpen;
     panel.classList.toggle('pii-shield-panel--open', isPanelOpen);
@@ -300,10 +435,20 @@
     }
   });
 
+  // Prompt logic
   document.getElementById('pii-shield-submit-btn').addEventListener('click', handleSubmit);
   document.getElementById('pii-shield-prompt-input').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
   });
+
+  // Import / Export logic
+  document.getElementById('pii-shield-export-btn').addEventListener('click', handleExport);
+  document.getElementById('pii-shield-import-btn').addEventListener('click', handleImport);
+  document.getElementById('pii-shield-import-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleImport(); }
+  });
+
+  // Preview logic
   document.getElementById('pii-shield-confirm-btn').addEventListener('click', handleConfirm);
   document.getElementById('pii-shield-cancel-btn').addEventListener('click', hidePreview);
 

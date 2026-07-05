@@ -1,0 +1,14 @@
+# Environment secrets - never commit
+.env
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
+
+# Node
+node_modules/

@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "AI Prompt Phone Masker",
+  "version": "1.0.0",
+  "description": "Masks phone numbers in prompts before they are transmitted to ChatGPT, Gemini, and Claude.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.chatgpt.com/*",
+    "*://*.claude.ai/*",
+    "*://*.gemini.google.com/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Phone Masker Settings"
+  },
+  "background": {
+    "service_worker": "background/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.chatgpt.com/*",
+        "*://*.claude.ai/*",
+        "*://*.gemini.google.com/*"
+      ],
+      "js": ["content/content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.chatgpt.com/*",
+        "*://*.claude.ai/*",
+        "*://*.gemini.google.com/*"
+      ],
+      "js": ["content/inject.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    }
+  ]
+}

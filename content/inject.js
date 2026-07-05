@@ -20,33 +20,8 @@
  */
 
 (function() {
-  // Regular expressions to match phone numbers
-  const PHONE_REGEXES = [
-    /(?:\b\d{1,3}[-.\s]+|\+\d{1,3}[-.\s]*)(?:\(\d{3}\)[-.\s]?\d{3}[-.\s]?\d{4}\b|\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\d{5}[-.\s]?\d{5}\b)|\b(?:\(\d{3}\)[-.\s]?\d{3}[-.\s]?\d{4}\b|\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\d{5}[-.\s]?\d{5}\b)/g
-  ];
-
-  function getMaskReplacement(maskType) {
-    switch (maskType) {
-      case 'placeholder': return '[phone number]';
-      case 'redacted': return '[REDACTED]';
-      case 'asterisks':
-      default:
-        return '***';
-    }
-  }
-
-  function maskText(text, maskType) {
-    let modified = text;
-    let totalCount = 0;
-    PHONE_REGEXES.forEach(regex => {
-      regex.lastIndex = 0;
-      const matches = text.match(regex);
-      if (matches) {
-        totalCount += matches.length;
-        modified = modified.replace(regex, getMaskReplacement(maskType));
-      }
-    });
-    return { modified, totalCount };
+  function maskText(text, maskType, piiTypes) {
+    return PIIDetectors.maskText(text, maskType, piiTypes);
   }
 
   // Load config from document element attribute (synchronized by content.js)
@@ -59,7 +34,7 @@
         // Fallback to default config on parse error
       }
     }
-    return { enabled: true, networkMasking: true, maskType: 'asterisks' };
+    return { enabled: true, networkMasking: true, maskType: 'asterisks', piiTypes: PIIDetectors.DEFAULT_PII_TYPES };
   }
 
   // 1. Intercept fetch API calls
@@ -75,7 +50,7 @@
     if (options && options.body) {
       try {
         if (typeof options.body === 'string') {
-          const { modified, totalCount } = maskText(options.body, config.maskType);
+          const { modified, totalCount } = maskText(options.body, config.maskType, config.piiTypes);
           if (totalCount > 0) {
             options.body = modified;
             
@@ -104,7 +79,7 @@
 
     try {
       if (typeof body === 'string') {
-        const { modified, totalCount } = maskText(body, config.maskType);
+        const { modified, totalCount } = maskText(body, config.maskType, config.piiTypes);
         if (totalCount > 0) {
           // Replace argument with masked version
           body = modified;

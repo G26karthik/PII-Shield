@@ -25,31 +25,17 @@
     enabled: true,
     domMasking: true,
     networkMasking: true,
-    maskType: 'asterisks'
+    maskType: 'asterisks',
+    piiTypes: { ...PIIDetectors.DEFAULT_PII_TYPES }
   };
-
-  // Regular expression patterns for phone numbers
-  const PHONE_REGEXES = [
-    /(?:\b\d{1,3}[-.\s]+|\+\d{1,3}[-.\s]*)(?:\(\d{3}\)[-.\s]?\d{3}[-.\s]?\d{4}\b|\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\d{5}[-.\s]?\d{5}\b)|\b(?:\(\d{3}\)[-.\s]?\d{3}[-.\s]?\d{4}\b|\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b|\d{5}[-.\s]?\d{5}\b)/g
-  ];
-
-  // Helper to get replacement string
-  function getMaskReplacement(maskType) {
-    switch (maskType) {
-      case 'placeholder': return '[phone number]';
-      case 'redacted': return '[REDACTED]';
-      case 'asterisks':
-      default:
-        return '***';
-    }
-  }
 
   // Helper to synchronize configuration into DOM for inject.js (MAIN world)
   function updateDOMConfig() {
     document.documentElement.setAttribute('data-phone-masker-config', JSON.stringify({
       enabled: config.enabled,
       networkMasking: config.networkMasking,
-      maskType: config.maskType
+      maskType: config.maskType,
+      piiTypes: config.piiTypes
     }));
   }
 
@@ -59,7 +45,8 @@
       enabled: true,
       domMasking: true,
       networkMasking: true,
-      maskType: 'asterisks'
+      maskType: 'asterisks',
+      piiTypes: PIIDetectors.DEFAULT_PII_TYPES
     });
     config = data;
     updateDOMConfig();
@@ -126,38 +113,14 @@
   let activeAlert = null;
   let activeInputEl = null;
 
-  // Check if text contains phone numbers
-  function testPhoneNumbers(text) {
-    return PHONE_REGEXES.some(regex => {
-      regex.lastIndex = 0;
-      return regex.test(text);
-    });
+  // Check if text contains any enabled PII type
+  function testPII(text) {
+    return PIIDetectors.detectAll(text, config.piiTypes).length > 0;
   }
 
-  // Count phone numbers in text
-  function countPhoneNumbers(text) {
-    let count = 0;
-    PHONE_REGEXES.forEach(regex => {
-      regex.lastIndex = 0;
-      const matches = text.match(regex);
-      if (matches) count += matches.length;
-    });
-    return count;
-  }
-
-  // Mask all phone numbers in text
+  // Mask all detected PII in text
   function maskText(text) {
-    let modified = text;
-    let totalCount = 0;
-    PHONE_REGEXES.forEach(regex => {
-      regex.lastIndex = 0;
-      const matches = text.match(regex);
-      if (matches) {
-        totalCount += matches.length;
-        modified = modified.replace(regex, getMaskReplacement(config.maskType));
-      }
-    });
-    return { modified, totalCount };
+    return PIIDetectors.maskText(text, config.maskType, config.piiTypes);
   }
 
   // Position and show warning badge near the active input field
@@ -172,7 +135,7 @@
     const alertEl = document.createElement('div');
     alertEl.className = 'phone-masker-alert';
     alertEl.innerHTML = `
-      <span>⚠️ Phone Number Detected</span>
+      <span>⚠️ Sensitive Data Detected</span>
       <button class="phone-masker-btn" id="phone-masker-action-btn">Redact</button>
     `;
 
@@ -253,7 +216,7 @@
       }
 
       // Notify background service worker of masking event
-      chrome.runtime.sendMessage({ type: 'phone_masked', count: totalCount });
+      chrome.runtime.sendMessage({ type: 'pii_masked', count: totalCount });
     }
 
     removeBadge();
@@ -271,14 +234,14 @@
     if (!inputEl) return;
 
     const pastedText = e.clipboardData.getData('text');
-    if (testPhoneNumbers(pastedText)) {
+    if (testPII(pastedText)) {
       // Intercept the default paste and insert the masked text
       e.preventDefault();
       const { modified, totalCount } = maskText(pastedText);
       document.execCommand('insertText', false, modified);
 
       // Notify background
-      chrome.runtime.sendMessage({ type: 'phone_masked', count: totalCount });
+      chrome.runtime.sendMessage({ type: 'pii_masked', count: totalCount });
     }
   }, true);
 
@@ -298,7 +261,7 @@
     scanTimeout = setTimeout(() => {
       const isContentEditable = inputEl.tagName !== 'INPUT' && inputEl.tagName !== 'TEXTAREA';
       const text = isContentEditable ? inputEl.innerText : inputEl.value;
-      if (testPhoneNumbers(text)) {
+      if (testPII(text)) {
         showBadge(inputEl);
       } else {
         removeBadge();
@@ -317,7 +280,7 @@
   document.addEventListener('phone-masker-stat', (e) => {
     const count = e.detail && e.detail.count;
     if (count && count > 0) {
-      chrome.runtime.sendMessage({ type: 'phone_masked', count });
+      chrome.runtime.sendMessage({ type: 'pii_masked', count });
     }
   });
 

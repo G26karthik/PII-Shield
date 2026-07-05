@@ -1,10 +1,10 @@
-# PII-Shield — CLAUDE.md (Agent Context & Loop Instructions)
+# PII-Shield â€” CLAUDE.md (Agent Context & Loop Instructions)
 
 ## Goal
-Extend the existing **PII-Shield** Chrome extension (Manifest V3) to detect and redact four types of Personally Identifiable Information (PII) from AI chat prompts on ChatGPT, Claude, and Gemini — before the data ever leaves the browser.
+Extend the existing **PII-Shield** Chrome extension (Manifest V3) to detect and redact four types of Personally Identifiable Information (PII) from AI chat prompts on ChatGPT, Claude, and Gemini â€” before the data ever leaves the browser.
 
 The four PII types to support:
-1. **Phone Numbers** (already implemented — keep and improve)
+1. **Phone Numbers** (already implemented â€” keep and improve)
 2. **PAN Numbers** (Indian Permanent Account Number)
 3. **Aadhaar Numbers** (Indian 12-digit UID)
 4. **Email Addresses**
@@ -19,10 +19,10 @@ PII-Shield/
 +-- README.md
 +-- test-regex.js              <- Node.js run-check script (NO frameworks)
 +-- background/
-¦   +-- background.js          <- Badge coordinator, storage init
+Â¦   +-- background.js          <- Badge coordinator, storage init
 +-- content/
-¦   +-- content.js             <- Isolated world: DOM events, paste, badge UI
-¦   +-- inject.js              <- Main world: fetch/XHR network proxy
+Â¦   +-- content.js             <- Isolated world: DOM events, paste, badge UI
+Â¦   +-- inject.js              <- Main world: fetch/XHR network proxy
 +-- popup/
     +-- popup.html
     +-- popup.css
@@ -33,22 +33,22 @@ PII-Shield/
 
 ## Agentic Loop Instructions
 
-### LOOP ENTRY — READ THIS FIRST
+### LOOP ENTRY â€” READ THIS FIRST
 Before writing a single line of code, execute this sequence every iteration:
 
-1. Read `test-regex.js` — understand the current test suite and all passing cases.
-2. Read `content/content.js` — understand the PII_DETECTORS structure and event handlers.
-3. Read `content/inject.js` — understand the network proxy interceptor.
-4. Read `popup/popup.html` and `popup/popup.js` — understand the settings UI.
-5. Run `node test-regex.js` — confirm baseline still passes before any change.
+1. Read `test-regex.js` â€” understand the current test suite and all passing cases.
+2. Read `content/content.js` â€” understand the PII_DETECTORS structure and event handlers.
+3. Read `content/inject.js` â€” understand the network proxy interceptor.
+4. Read `popup/popup.html` and `popup/popup.js` â€” understand the settings UI.
+5. Run `node test-regex.js` â€” confirm baseline still passes before any change.
 
 Only after all five steps, begin planning your changes.
 
 ---
 
-### LOOP BODY — IMPLEMENTATION PLAN (execute in order)
+### LOOP BODY â€” IMPLEMENTATION PLAN (execute in order)
 
-#### STEP 1 — Create `content/pii-patterns.js`
+#### STEP 1 â€” Create `content/pii-patterns.js`
 Create a new file: `content/pii-patterns.js`
 
 This file exports a single `PII_DETECTORS` array. Each detector is an object:
@@ -79,8 +79,8 @@ Aadhaar is a 12-digit number where the first digit is 2-9, often displayed in gr
 
 ---
 
-#### STEP 2 — Refactor `content/content.js`
-- Inline PII_DETECTORS at the top (comment: // SOURCE: pii-patterns.js — keep in sync).
+#### STEP 2 â€” Refactor `content/content.js`
+- Inline PII_DETECTORS at the top (comment: // SOURCE: pii-patterns.js â€” keep in sync).
 - Replace PHONE_REGEXES with a loop over PII_DETECTORS:
 
     for (const detector of PII_DETECTORS) {
@@ -102,28 +102,28 @@ Aadhaar is a 12-digit number where the first digit is 2-9, often displayed in gr
 
 ---
 
-#### STEP 3 — Refactor `content/inject.js`
+#### STEP 3 â€” Refactor `content/inject.js`
 - Inline the same PII_DETECTORS array (same sync comment).
 - Loop over detectors in the fetch/XHR interceptor, only redact severity='redact' types.
 - 'block' severity is handled in the DOM layer only.
 
 ---
 
-#### STEP 4 — Update `popup/popup.html` and `popup/popup.js`
+#### STEP 4 â€” Update `popup/popup.html` and `popup/popup.js`
 - Add a "PII Types" section: one toggle row per detector showing label + severity badge.
 - Save per-detector state to chrome.storage.local: { phone: true, email: true, pan: true, aadhaar: true }
 - content.js and inject.js skip any detector where enabled === false.
 
 ---
 
-#### STEP 5 — Update `background/background.js`
+#### STEP 5 â€” Update `background/background.js`
 - Expand stats: { phone: 0, email: 0, pan: 0, aadhaar: 0, blocked: 0 }
 - Handle new message type 'pii_blocked' in addition to 'phone_masked'.
 - Badge shows total of all blocked + redacted counts.
 
 ---
 
-#### STEP 6 — Update `test-regex.js`
+#### STEP 6 â€” Update `test-regex.js`
 Add test cases for ALL four detectors. Each needs:
 - At least 2 positive matches (real valid formats)
 - At least 1 negative (something that must NOT match)
@@ -133,14 +133,14 @@ ALL tests must pass before proceeding. If any fail: fix, then re-run. Never skip
 
 ---
 
-#### STEP 7 — Update `README.md`
+#### STEP 7 â€” Update `README.md`
 - Document all 4 PII types with redact vs block behavior.
 - Show the pii-patterns.js detector structure so developers can add new types.
 - Add a "Running Tests" section.
 
 ---
 
-### LOOP EXIT CRITERIA — Definition of Done
+### LOOP EXIT CRITERIA â€” Definition of Done
 The loop is complete only when ALL of the following are true:
 
 [ ] node test-regex.js exits with code 0 and prints all tests passed

@@ -16,18 +16,32 @@
  * ============================================================================
  */
 
+// Default per-PII-type detection toggles (kept in sync with
+// PIIDetectors.DEFAULT_PII_TYPES in content/pii-detectors.js; the service
+// worker inlines this rather than importing the shared module).
+const DEFAULT_PII_TYPES = {
+  phone: true,
+  email: true,
+  aadhaar: true,
+  creditCard: true,
+  pan: true,
+  passport: true,
+  bankAccount: true
+};
+
 // Initialize storage defaults on extension installation
 chrome.runtime.onInstalled.addListener(async () => {
   const existing = await chrome.storage.local.get([
-    'enabled', 'domMasking', 'networkMasking', 'maskType', 'blockedCount'
+    'enabled', 'domMasking', 'networkMasking', 'maskType', 'blockedCount', 'piiTypes'
   ]);
-  
+
   chrome.storage.local.set({
     enabled: existing.enabled !== undefined ? existing.enabled : true,
     domMasking: existing.domMasking !== undefined ? existing.domMasking : true,
     networkMasking: existing.networkMasking !== undefined ? existing.networkMasking : true,
     maskType: existing.maskType !== undefined ? existing.maskType : 'asterisks',
-    blockedCount: existing.blockedCount !== undefined ? existing.blockedCount : 0
+    blockedCount: existing.blockedCount !== undefined ? existing.blockedCount : 0,
+    piiTypes: { ...DEFAULT_PII_TYPES, ...(existing.piiTypes || {}) }
   });
 
   // Set default badge background color (matching purple theme accent)
@@ -46,7 +60,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 // Listener for runtime messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'phone_masked') {
+  if (message.type === 'pii_masked') {
     const increment = message.count || 1;
     
     // Atomically increment blocked count in storage

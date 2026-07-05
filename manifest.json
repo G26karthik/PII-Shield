@@ -1,39 +1,31 @@
 {
   "manifest_version": 3,
-  "name": "AI Prompt Phone Masker",
-  "version": "1.0.0",
-  "description": "Masks phone numbers in prompts before they are transmitted to ChatGPT, Gemini, and Claude.",
+  "name": "PII Shield",
+  "version": "2.0.0",
+  "description": "Automatically detects and redacts personal information on any website. Uses free AI to create custom masking rules — no API key needed.",
   "permissions": [
     "storage"
   ],
   "host_permissions": [
-    "*://*.chatgpt.com/*",
-    "*://*.claude.ai/*",
-    "*://*.gemini.google.com/*"
+    "<all_urls>",
+    "https://text.pollinations.ai/*"
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Phone Masker Settings"
+    "default_title": "PII Shield Settings"
   },
   "background": {
     "service_worker": "background/background.js"
   },
   "content_scripts": [
     {
-      "matches": [
-        "*://*.chatgpt.com/*",
-        "*://*.claude.ai/*",
-        "*://*.gemini.google.com/*"
-      ],
-      "js": ["content/pii-detectors.js", "content/content.js"],
+      "matches": ["<all_urls>"],
+      "js": ["content/pii-detectors.js", "content/content.js", "content/widget.js"],
+      "css": ["content/widget.css"],
       "run_at": "document_idle"
     },
     {
-      "matches": [
-        "*://*.chatgpt.com/*",
-        "*://*.claude.ai/*",
-        "*://*.gemini.google.com/*"
-      ],
+      "matches": ["<all_urls>"],
       "js": ["content/pii-detectors.js", "content/inject.js"],
       "world": "MAIN",
       "run_at": "document_start"

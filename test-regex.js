@@ -208,9 +208,91 @@ testCases.forEach((tc) => {
 
 console.log('\n----------------------------------------');
 if (failed === 0) {
-  console.log('🎉 All tests passed successfully!');
-  process.exit(0);
+  console.log('🎉 All regex tests passed!');
 } else {
-  console.error(`💥 ${failed} tests failed!`);
+  console.error(`💥 ${failed} regex tests failed!`);
   process.exit(1);
 }
+
+// ---- Custom Detector API Tests ----
+console.log('\nRunning Custom Detector API Tests...\n');
+
+let customFailed = 0;
+
+function assertCustom(name, fn) {
+  try {
+    fn();
+    console.log(`✅ Passed: ${name}`);
+  } catch (err) {
+    console.error(`❌ Failed: ${name}`);
+    console.error(`   Error: ${err.message}`);
+    customFailed++;
+  }
+}
+
+// Test: addCustomDetector
+assertCustom('Add custom detector', () => {
+  const result = PIIDetectors.addCustomDetector('test_1', 'test code', '\\b\\d{3}[A-Za-z]{2}\\b', 'gi');
+  assert.strictEqual(result, true);
+  const detectors = PIIDetectors.getCustomDetectors();
+  assert.strictEqual(detectors.length, 1);
+  assert.strictEqual(detectors[0].id, 'test_1');
+});
+
+// Test: custom detector actually detects
+assertCustom('Custom detector masks text', () => {
+  const { modified, totalCount } = PIIDetectors.maskText('Code 123AB found', 'redacted');
+  assert.strictEqual(totalCount, 1);
+  assert.strictEqual(modified, 'Code [REDACTED TEST CODE] found');
+});
+
+// Test: removeCustomDetector
+assertCustom('Remove custom detector', () => {
+  const removed = PIIDetectors.removeCustomDetector('test_1');
+  assert.strictEqual(removed, true);
+  const detectors = PIIDetectors.getCustomDetectors();
+  assert.strictEqual(detectors.length, 0);
+});
+
+// Test: after removal, text is no longer masked
+assertCustom('Removed detector no longer matches', () => {
+  const { totalCount } = PIIDetectors.maskText('Code 123AB found', 'redacted');
+  assert.strictEqual(totalCount, 0);
+});
+
+// Test: loadCustomDetectors (bulk load)
+assertCustom('Load custom detectors from array', () => {
+  PIIDetectors.loadCustomDetectors([
+    { id: 'bulk_1', label: 'IP address', regexSource: '\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b', regexFlags: 'g' },
+    { id: 'bulk_2', label: 'hex color', regexSource: '#[0-9A-Fa-f]{6}\\b', regexFlags: 'gi' }
+  ]);
+  const detectors = PIIDetectors.getCustomDetectors();
+  assert.strictEqual(detectors.length, 2);
+});
+
+// Test: bulk-loaded detectors work
+assertCustom('Bulk-loaded detector masks IP', () => {
+  const { modified, totalCount } = PIIDetectors.maskText('Server at 192.168.1.1 is down', 'redacted');
+  assert.strictEqual(totalCount, 1);
+  assert.strictEqual(modified, 'Server at [REDACTED IP ADDRESS] is down');
+});
+
+// Test: invalid regex is rejected
+assertCustom('Invalid regex is rejected', () => {
+  const result = PIIDetectors.addCustomDetector('bad_1', 'bad', '[invalid(', 'gi');
+  assert.strictEqual(result, false);
+});
+
+// Cleanup
+PIIDetectors.loadCustomDetectors([]);
+
+console.log('\n----------------------------------------');
+if (customFailed === 0) {
+  console.log('🎉 All custom detector tests passed!');
+} else {
+  console.error(`💥 ${customFailed} custom detector tests failed!`);
+}
+
+const totalFailed = failed + customFailed;
+console.log(`\n${ totalFailed === 0 ? '🎉 ALL TESTS PASSED!' : `💥 ${totalFailed} TOTAL FAILURES` }`);
+process.exit(totalFailed === 0 ? 0 : 1);

@@ -133,110 +133,6 @@ h2 {
   margin-bottom: 2px;
 }
 
-/* Option Row Layout */
-.option-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 10px;
-  border-radius: 10px;
-  background: hsl(223, 40%, 13%);
-  border: 1px solid transparent;
-  transition: border var(--transition-fast), background var(--transition-fast);
-}
-
-.option-row:hover {
-  border-color: var(--border-hover);
-  background: hsl(223, 40%, 14%);
-}
-
-.option-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-right: 12px;
-}
-
-.option-label {
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.option-desc {
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  line-height: 1.35;
-}
-
-/* PII Type Toggle List */
-.pii-type-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 190px;
-  overflow-y: auto;
-  padding-right: 2px;
-}
-
-.pii-type-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: hsl(223, 40%, 13%);
-  border: 1px solid transparent;
-  transition: border var(--transition-fast), background var(--transition-fast);
-}
-
-.pii-type-row:hover {
-  border-color: var(--border-hover);
-  background: hsl(223, 40%, 14%);
-}
-
-.pii-type-row .option-label {
-  font-size: 0.82rem;
-  font-weight: 500;
-}
-
-/* Custom Dropdown Select */
-.select-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.field-label {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.styled-select {
-  width: 100%;
-  font-family: var(--font-family);
-  background-color: hsl(223, 40%, 13%);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 0.85rem;
-  font-weight: 400;
-  outline: none;
-  cursor: pointer;
-  appearance: none;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='hsl(215, 20%, 65%)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  transition: border var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.styled-select:focus {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 2px var(--accent-glow);
-}
-
 /* Stats Section Layout */
 .stats-section {
   border-top: 1px solid var(--border-color);
@@ -356,24 +252,6 @@ input:checked + .slider:before {
 
 .slider.round:before {
   border-radius: 50%;
-}
-
-/* Small switches for inner rows */
-.small-switch {
-  width: 36px;
-  height: 20px;
-  margin-top: 2px;
-}
-
-.small-switch .slider:before {
-  height: 14px;
-  width: 14px;
-  left: 3px;
-  bottom: 3px;
-}
-
-input:checked + .small-switch .slider:before {
-  transform: translateX(16px);
 }
 
 /* Footer styling */

@@ -1,0 +1,437 @@
+/* ============================================================================
+ * PII Shield — Floating AI Rule Builder Widget
+ * Injected via content script on every page.
+ * All classes prefixed with `pii-shield-` to avoid collisions.
+ * ============================================================================ */
+
+/* Floating trigger button — bottom-right corner */
+.pii-shield-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, hsl(263, 90%, 63%) 0%, hsl(290, 85%, 60%) 100%);
+  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+  animation: pii-shield-pulse 3s infinite;
+}
+
+.pii-shield-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(124, 58, 237, 0.6), 0 3px 10px rgba(0, 0, 0, 0.25);
+  animation: none;
+}
+
+.pii-shield-fab:active {
+  transform: scale(0.95);
+}
+
+.pii-shield-fab svg {
+  width: 24px;
+  height: 24px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.pii-shield-fab.pii-shield-fab--open svg {
+  display: none;
+}
+
+.pii-shield-fab.pii-shield-fab--open::after {
+  content: '✕';
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@keyframes pii-shield-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(124, 58, 237, 0.45); }
+  50% { box-shadow: 0 4px 24px rgba(124, 58, 237, 0.7); }
+}
+
+/* Panel container — slides up from the FAB */
+.pii-shield-panel {
+  position: fixed;
+  bottom: 84px;
+  right: 24px;
+  width: 360px;
+  max-height: 480px;
+  border-radius: 16px;
+  z-index: 2147483646;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: hsl(223, 47%, 14%);
+  border: 1px solid hsl(223, 30%, 22%);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(16px) scale(0.95);
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pii-shield-panel.pii-shield-panel--open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Panel header */
+.pii-shield-panel__header {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid hsl(223, 30%, 22%);
+  position: relative;
+}
+
+.pii-shield-panel__header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, hsl(263, 90%, 63%), hsl(290, 85%, 60%));
+  border-radius: 16px 16px 0 0;
+}
+
+.pii-shield-panel__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: hsl(210, 40%, 98%);
+  margin: 0;
+  line-height: 1;
+}
+
+.pii-shield-panel__subtitle {
+  font-size: 11px;
+  color: hsl(215, 16%, 47%);
+  margin-top: 4px;
+}
+
+/* AI status badge — static "always on" since Pollinations needs no setup */
+.pii-shield-ai-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: hsl(142, 60%, 55%);
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: hsla(142, 40%, 10%, 0.9);
+  border: 1px solid hsla(142, 50%, 30%, 0.4);
+}
+
+.pii-shield-ai-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pii-shield-ai-dot--ready {
+  background: hsl(142, 70%, 45%);
+  box-shadow: 0 0 6px hsla(142, 70%, 45%, 0.5);
+}
+
+/* Input area */
+.pii-shield-panel__input-area {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pii-shield-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.pii-shield-input {
+  flex: 1;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid hsl(223, 30%, 22%);
+  background: hsl(223, 40%, 11%);
+  color: hsl(210, 40%, 98%);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  resize: none;
+}
+
+.pii-shield-input::placeholder {
+  color: hsl(215, 16%, 40%);
+}
+
+.pii-shield-input:focus {
+  border-color: hsl(263, 90%, 63%);
+  box-shadow: 0 0 0 3px hsla(263, 90%, 63%, 0.2);
+}
+
+.pii-shield-submit-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, hsl(263, 90%, 63%), hsl(290, 85%, 60%));
+  color: white;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+  flex-shrink: 0;
+}
+
+.pii-shield-submit-btn:hover {
+  transform: scale(1.05);
+}
+
+.pii-shield-submit-btn:active {
+  transform: scale(0.95);
+}
+
+.pii-shield-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pii-shield-submit-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Loading spinner */
+.pii-shield-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: pii-shield-spin 0.6s linear infinite;
+}
+
+@keyframes pii-shield-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* AI response / preview area */
+.pii-shield-preview {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: hsla(223, 40%, 13%, 0.8);
+  border: 1px solid hsl(223, 30%, 22%);
+  font-size: 12px;
+  color: hsl(215, 20%, 65%);
+  line-height: 1.5;
+  display: none;
+}
+
+.pii-shield-preview.pii-shield-preview--visible {
+  display: block;
+}
+
+.pii-shield-preview__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(215, 16%, 47%);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.pii-shield-preview__rule-name {
+  color: hsl(210, 40%, 98%);
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.pii-shield-preview__regex {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 12px;
+  color: hsl(263, 90%, 73%);
+  background: hsl(223, 40%, 10%);
+  padding: 6px 10px;
+  border-radius: 6px;
+  word-break: break-all;
+  margin: 6px 0;
+}
+
+.pii-shield-preview__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pii-shield-preview__btn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.pii-shield-preview__btn:active {
+  transform: scale(0.97);
+}
+
+.pii-shield-preview__btn--confirm {
+  background: hsl(142, 70%, 40%);
+  color: white;
+}
+
+.pii-shield-preview__btn--confirm:hover {
+  background: hsl(142, 70%, 45%);
+}
+
+.pii-shield-preview__btn--cancel {
+  background: transparent;
+  color: hsl(215, 20%, 65%);
+  border: 1px solid hsl(223, 30%, 22%);
+}
+
+.pii-shield-preview__btn--cancel:hover {
+  background: hsl(223, 30%, 18%);
+  color: hsl(210, 40%, 98%);
+}
+
+/* Error message */
+.pii-shield-error {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: hsla(0, 70%, 50%, 0.15);
+  border: 1px solid hsla(0, 70%, 50%, 0.3);
+  color: hsl(0, 70%, 70%);
+  font-size: 12px;
+  display: none;
+}
+
+.pii-shield-error.pii-shield-error--visible {
+  display: block;
+}
+
+/* Rules list section */
+.pii-shield-panel__rules {
+  padding: 0 18px 14px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.pii-shield-rules-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(215, 16%, 47%);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.pii-shield-rules-empty {
+  font-size: 12px;
+  color: hsl(215, 16%, 40%);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.pii-shield-rule-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: hsl(223, 40%, 13%);
+  border: 1px solid transparent;
+  margin-bottom: 6px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pii-shield-rule-item:hover {
+  border-color: hsl(223, 30%, 28%);
+  background: hsl(223, 40%, 15%);
+}
+
+.pii-shield-rule-item__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pii-shield-rule-item__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(210, 40%, 98%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pii-shield-rule-item__regex {
+  font-size: 10px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  color: hsl(263, 70%, 70%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pii-shield-rule-item__delete {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: hsl(215, 16%, 47%);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  transition: background 0.15s ease, color 0.15s ease;
+  font-size: 14px;
+}
+
+.pii-shield-rule-item__delete:hover {
+  background: hsla(0, 70%, 50%, 0.2);
+  color: hsl(0, 70%, 65%);
+}
+
+/* Scrollbar styling for rules list */
+.pii-shield-panel__rules::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pii-shield-panel__rules::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pii-shield-panel__rules::-webkit-scrollbar-thumb {
+  background: hsl(223, 30%, 28%);
+  border-radius: 4px;
+}
+
+.pii-shield-panel__rules::-webkit-scrollbar-thumb:hover {
+  background: hsl(223, 30%, 35%);
+}

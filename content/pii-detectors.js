@@ -90,10 +90,88 @@
       label: 'bank account number',
       // Bare 9-18 digit runs are indistinguishable from phone/Aadhaar/card
       // numbers, so only mask when preceded by an account-referencing keyword.
-      regex: /\b(?:a\/?c|account)\.?\s*(?:no\.?|number)?\s*(?:is|:|-)?\s*(\d{9,18})\b/gi,
+      regex: /\b(?:a\/?c|account)\.?\s*(?:no\.?|number)?\s*(?:is|:|-)??\s*(\d{9,18})\b/gi,
       group: 1
     }
   ];
+
+  // ---- Custom Detector API ----
+  // User-created detectors via the AI rule builder. These are stored separately
+  // so they can be serialized to/from chrome.storage.local independently.
+  let CUSTOM_DETECTORS = [];
+
+  /**
+   * Add a custom detector at runtime.
+   * @param {string} id - Unique rule ID (e.g. 'custom_abc123')
+   * @param {string} label - Human-readable label (e.g. '3-digit 2-letter code')
+   * @param {string} regexSource - Regex source string (e.g. '\\b\\d{3}[A-Za-z]{2}\\b')
+   * @param {string} regexFlags - Regex flags (e.g. 'gi')
+   * @returns {boolean} true if added successfully, false if regex is invalid
+   */
+  function addCustomDetector(id, label, regexSource, regexFlags) {
+    try {
+      // Validate the regex compiles
+      const testRegex = new RegExp(regexSource, regexFlags);
+
+      // Safety check: reject patterns that could cause catastrophic backtracking
+      // (simple heuristic — reject nested quantifiers)
+      if (/(\+|\*|\{)\s*(\+|\*|\{)/.test(regexSource)) {
+        console.warn('[PII Shield] Rejected potentially unsafe regex:', regexSource);
+        return false;
+      }
+
+      // Remove existing detector with same id if present
+      removeCustomDetector(id);
+
+      CUSTOM_DETECTORS.push({
+        id: id,
+        label: label,
+        regex: new RegExp(regexSource, regexFlags.includes('g') ? regexFlags : regexFlags + 'g'),
+        isCustom: true
+      });
+      return true;
+    } catch (e) {
+      console.warn('[PII Shield] Invalid custom regex:', e.message);
+      return false;
+    }
+  }
+
+  /**
+   * Remove a custom detector by id.
+   * @param {string} id - The rule ID to remove
+   * @returns {boolean} true if found and removed
+   */
+  function removeCustomDetector(id) {
+    const before = CUSTOM_DETECTORS.length;
+    CUSTOM_DETECTORS = CUSTOM_DETECTORS.filter(d => d.id !== id);
+    return CUSTOM_DETECTORS.length < before;
+  }
+
+  /**
+   * Get all currently active custom detectors.
+   * @returns {Array} Copy of the custom detectors array
+   */
+  function getCustomDetectors() {
+    return CUSTOM_DETECTORS.map(d => ({
+      id: d.id,
+      label: d.label,
+      regexSource: d.regex.source,
+      regexFlags: d.regex.flags,
+      isCustom: true
+    }));
+  }
+
+  /**
+   * Load custom detectors from a serialized array (e.g. from chrome.storage).
+   * @param {Array} rules - Array of {id, label, regexSource, regexFlags}
+   */
+  function loadCustomDetectors(rules) {
+    CUSTOM_DETECTORS = [];
+    if (!Array.isArray(rules)) return;
+    rules.forEach(rule => {
+      addCustomDetector(rule.id, rule.label, rule.regexSource, rule.regexFlags);
+    });
+  }
 
   // Runs every enabled detector over `text`, validates candidates, resolves
   // overlaps (earliest start wins; among equal starts, the longer/more
@@ -101,9 +179,11 @@
   // position: [{ start, end, type, label, value }]
   function detectAll(text, enabledTypes) {
     const candidates = [];
+    const allDetectors = [...DETECTORS, ...CUSTOM_DETECTORS];
 
-    DETECTORS.forEach((detector) => {
-      if (enabledTypes && enabledTypes[detector.id] === false) return;
+    allDetectors.forEach((detector) => {
+      // For built-in detectors, check enabledTypes; custom detectors are always on
+      if (!detector.isCustom && enabledTypes && enabledTypes[detector.id] === false) return;
 
       const regex = new RegExp(detector.regex.source, detector.regex.flags);
       let match;
@@ -169,5 +249,17 @@
     return { modified, totalCount: matches.length, counts };
   }
 
-  return { DETECTORS, DEFAULT_PII_TYPES, luhnCheck, detectAll, getMaskReplacement, maskText };
+  return {
+    DETECTORS,
+    DEFAULT_PII_TYPES,
+    luhnCheck,
+    detectAll,
+    getMaskReplacement,
+    maskText,
+    // Custom detector API
+    addCustomDetector,
+    removeCustomDetector,
+    getCustomDetectors,
+    loadCustomDetectors
+  };
 });

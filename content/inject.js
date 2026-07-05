@@ -20,7 +20,10 @@
  */
 
 (function() {
-  function maskText(text, maskType, piiTypes) {
+  function maskText(text, maskType, piiTypes, customRules) {
+    if (customRules && typeof PIIDetectors !== 'undefined') {
+      PIIDetectors.loadCustomDetectors(customRules);
+    }
     return PIIDetectors.maskText(text, maskType, piiTypes);
   }
 
@@ -34,7 +37,7 @@
         // Fallback to default config on parse error
       }
     }
-    return { enabled: true, networkMasking: true, maskType: 'asterisks', piiTypes: PIIDetectors.DEFAULT_PII_TYPES };
+    return { enabled: true, networkMasking: true, maskType: 'redacted', piiTypes: PIIDetectors.DEFAULT_PII_TYPES, customRules: [] };
   }
 
   // 1. Intercept fetch API calls
@@ -50,7 +53,7 @@
     if (options && options.body) {
       try {
         if (typeof options.body === 'string') {
-          const { modified, totalCount } = maskText(options.body, config.maskType, config.piiTypes);
+          const { modified, totalCount } = maskText(options.body, config.maskType, config.piiTypes, config.customRules);
           if (totalCount > 0) {
             options.body = modified;
             
@@ -79,7 +82,7 @@
 
     try {
       if (typeof body === 'string') {
-        const { modified, totalCount } = maskText(body, config.maskType, config.piiTypes);
+        const { modified, totalCount } = maskText(body, config.maskType, config.piiTypes, config.customRules);
         if (totalCount > 0) {
           // Replace argument with masked version
           body = modified;

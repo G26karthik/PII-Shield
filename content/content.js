@@ -1,6 +1,6 @@
 /**
  * content.js
- * AI Prompt Phone Masker - Isolated World Content Script
+ * PII Shield — Isolated World Content Script
  *
  * ============================================================================
  * SYSTEM DESIGN NOTE (01-system-design.mdc)
@@ -20,14 +20,14 @@
  */
 
 (async () => {
-  // Config state
   let config = {
     enabled: true,
     domMasking: true,
     networkMasking: true,
-    maskType: 'asterisks',
+    maskType: 'redacted',
     piiTypes: { ...PIIDetectors.DEFAULT_PII_TYPES }
   };
+  let customRules = [];
 
   // Helper to synchronize configuration into DOM for inject.js (MAIN world)
   function updateDOMConfig() {
@@ -35,7 +35,8 @@
       enabled: config.enabled,
       networkMasking: config.networkMasking,
       maskType: config.maskType,
-      piiTypes: config.piiTypes
+      piiTypes: config.piiTypes,
+      customRules: customRules
     }));
   }
 
@@ -45,7 +46,7 @@
       enabled: true,
       domMasking: true,
       networkMasking: true,
-      maskType: 'asterisks',
+      maskType: 'redacted',
       piiTypes: PIIDetectors.DEFAULT_PII_TYPES
     });
     config = data;
@@ -55,17 +56,35 @@
     }
   }
 
+  // Load custom rules from storage and register them with PIIDetectors
+  async function loadCustomRules() {
+    try {
+      const data = await chrome.storage.local.get({ customRules: [] });
+      customRules = data.customRules;
+      PIIDetectors.loadCustomDetectors(customRules);
+      updateDOMConfig();
+    } catch (e) {
+      console.warn('[PII Shield] Failed to load custom rules:', e);
+    }
+  }
+
   await loadConfig();
+  await loadCustomRules();
 
   chrome.storage.onChanged.addListener((changes) => {
     for (const [key, change] of Object.entries(changes)) {
       config[key] = change.newValue;
+    }
+    if (changes.customRules) {
+      customRules = changes.customRules.newValue || [];
+      PIIDetectors.loadCustomDetectors(customRules);
     }
     updateDOMConfig();
     if (!config.enabled) {
       removeBadge();
     }
   });
+
 
   // Inject CSS for the warning badge
   const styleEl = document.createElement('style');

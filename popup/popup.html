@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Prompt Phone Masker Settings</title>
+  <title>PII Shield Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -19,8 +19,8 @@
           </svg>
         </div>
         <div class="title-container">
-          <h1 id="main-title">Phone Masker</h1>
-          <span class="subtitle">AI Privacy Proxy</span>
+          <h1 id="main-title">PII Shield</h1>
+          <span class="subtitle">Privacy Guard for All Sites</span>
         </div>
       </div>
       <div class="toggle-container">
@@ -32,109 +32,13 @@
     </header>
 
     <main class="main-content">
-      <!-- Mode Selection Section -->
-      <section class="section">
-        <h2>Masking Modes</h2>
-        
-        <div class="option-row">
-          <div class="option-info">
-            <label class="option-label" for="dom-masking-switch">DOM-Level Masking</label>
-            <p class="option-desc">Masks phone numbers directly in the input boxes as you type or paste.</p>
-          </div>
-          <label class="switch small-switch" for="dom-masking-switch">
-            <input type="checkbox" id="dom-masking-switch" checked>
-            <span class="slider round"></span>
-          </label>
-        </div>
-
-        <div class="option-row">
-          <div class="option-info">
-            <label class="option-label" for="network-masking-switch">Network Interception (Proxy)</label>
-            <p class="option-desc">Keeps UI clean but silently redacts phone numbers in outgoing API requests.</p>
-          </div>
-          <label class="switch small-switch" for="network-masking-switch">
-            <input type="checkbox" id="network-masking-switch" checked>
-            <span class="slider round"></span>
-          </label>
-        </div>
-      </section>
-
-      <!-- PII Type Detection Section -->
-      <section class="section">
-        <h2>Detect &amp; Mask</h2>
-        <div class="pii-type-list">
-          <div class="pii-type-row">
-            <label class="option-label" for="pii-type-phone">Phone Number</label>
-            <label class="switch small-switch" for="pii-type-phone">
-              <input type="checkbox" id="pii-type-phone" data-pii-type="phone" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="pii-type-row">
-            <label class="option-label" for="pii-type-email">Email Address</label>
-            <label class="switch small-switch" for="pii-type-email">
-              <input type="checkbox" id="pii-type-email" data-pii-type="email" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="pii-type-row">
-            <label class="option-label" for="pii-type-aadhaar">Aadhaar Number</label>
-            <label class="switch small-switch" for="pii-type-aadhaar">
-              <input type="checkbox" id="pii-type-aadhaar" data-pii-type="aadhaar" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="pii-type-row">
-            <label class="option-label" for="pii-type-creditCard">Credit Card Number</label>
-            <label class="switch small-switch" for="pii-type-creditCard">
-              <input type="checkbox" id="pii-type-creditCard" data-pii-type="creditCard" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="pii-type-row">
-            <label class="option-label" for="pii-type-pan">PAN Card</label>
-            <label class="switch small-switch" for="pii-type-pan">
-              <input type="checkbox" id="pii-type-pan" data-pii-type="pan" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="pii-type-row">
-            <label class="option-label" for="pii-type-passport">Passport Number</label>
-            <label class="switch small-switch" for="pii-type-passport">
-              <input type="checkbox" id="pii-type-passport" data-pii-type="passport" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-          <div class="pii-type-row">
-            <label class="option-label" for="pii-type-bankAccount">Bank Account / IFSC</label>
-            <label class="switch small-switch" for="pii-type-bankAccount">
-              <input type="checkbox" id="pii-type-bankAccount" data-pii-type="bankAccount" checked>
-              <span class="slider round"></span>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <!-- Mask Customization Section -->
-      <section class="section">
-        <h2>Customization</h2>
-        <div class="select-wrapper">
-          <label class="field-label" for="mask-type">Replacement Text</label>
-          <select id="mask-type" class="styled-select">
-            <option value="asterisks">Asterisks (***)</option>
-            <option value="placeholder">[phone number]</option>
-            <option value="redacted">[REDACTED]</option>
-          </select>
-        </div>
-      </section>
-
       <!-- Statistics Section -->
       <section class="section stats-section">
         <h2>Privacy Statistics</h2>
         <div class="stats-grid">
           <div class="stat-card">
             <span class="stat-value" id="blocked-count">0</span>
-            <span class="stat-label">Numbers Masked</span>
+            <span class="stat-label">Items Redacted</span>
           </div>
           <button class="btn btn-secondary" id="reset-stats-btn">
             Reset Stats
@@ -144,7 +48,7 @@
     </main>
 
     <footer class="footer">
-      <p>Works on ChatGPT, Claude, and Gemini</p>
+      <p>Active on all websites</p>
     </footer>
   </div>
   <script src="popup.js"></script>
